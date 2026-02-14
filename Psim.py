@@ -3,7 +3,24 @@
 # parse functions
 
 def parse_instructions(filename):
-    pass
+    instructions = []
+    with open(filename, "r") as f: 
+        for line in f: 
+            line= line.strip()
+            print(line)
+            if line:
+                line = line.strip("<>")
+                parts = line.split(",")
+
+                cleaned = []
+                for p in parts:
+                    cleaned.append(p.strip())
+                    
+                instruction = tuple(cleaned)
+                instructions.append(instruction)
+
+    return instructions
+
 def parse_registers(filename):
     pass
 def parse_datamemory(filename):
