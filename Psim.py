@@ -6,7 +6,6 @@ def parse_instructions(filename):
     with open(filename, "r") as f: 
         for line in f: 
             line= line.strip()
-            print(line)
             if line:
                 line = line.strip("<>")
                 parts = line.split(",")
@@ -31,7 +30,6 @@ def parse_registers(filename):
                 cleaned = []
                 for p in parts:
                     cleaned.append(p.strip())
-                print(cleaned)
 
                 reg_name = cleaned[0]        
                 reg_value = int(cleaned[1])
@@ -190,9 +188,9 @@ def print_state(step, inm, inb, aib, lib, adb, reb, rgf, dam):
     return "\n".join(lines)
 
 def main():
-    inm = parse_instructions("sample/instructions.txt")
-    rgf = parse_registers("sample/registers.txt")
-    dam = parse_datamemory("sample/datamemory.txt")
+    inm = parse_instructions("instructions.txt")
+    rgf = parse_registers("registers.txt")
+    dam = parse_datamemory("datamemory.txt")
 
     inb, aib, lib, adb, reb = [], [], [], [], []
     step = 0
@@ -206,6 +204,11 @@ def main():
     output.append(print_state(step, inm, inb, aib, lib, adb, reb, rgf, dam))
 
     while True:
+        adb_snapshot = len(adb)
+        inb_snapshot = len(inb)
+        aib_snapshot = len(aib)
+        lib_snapshot = len(lib)
+        reb_snapshot = len(reb)
         fired = False
         #try each transition, set fired = True if any fires
 
@@ -230,7 +233,7 @@ def main():
                 fired = True
 
         #transition 3 and 4; issue1 & issue2
-        if len(inb) > 0:
+        if inb_snapshot > 0:
             for i in range(len(inb)):
                 opcode = inb[i][0]
                 if (opcode == "ADD") or (opcode == "SUB") or (opcode == "AND") or (opcode == "OR"):
@@ -245,7 +248,7 @@ def main():
                     break
 
         #transition 5; ALU 
-        if len(aib) > 0:
+        if aib_snapshot > 0:
             opcode, destination, val, val1 = (
                 aib[0][0],
                 aib[0][1],
@@ -257,20 +260,20 @@ def main():
             elif opcode == "SUB":
                 res = (val - val1)
             elif opcode == "AND":
-                res = (val and val1)
+                res = (val & val1)
             elif opcode == "OR":
-                res = (val or val1)
+                res = (val | val1)
 
             res_token = (destination, res)
-            reb.append(res_token)
-
             order[res_token] = order[aib[0]]
             del order[aib[0]]
             aib.pop(0)
+            reb.append(res_token)
+            reb.sort(key=lambda t: order[t])
             fired = True
 
         #transition 6; addr
-        if len(lib) > 0: 
+        if lib_snapshot > 0: 
             destination, val, val1 = (
                 lib[0][1],
                 lib[0][2],
@@ -286,7 +289,7 @@ def main():
             fired = True
 
         #transition 7; load
-        if len(adb) > 0: 
+        if adb_snapshot > 0: 
             destination, address = (
                 adb[0][0],
                 adb[0][1]
@@ -294,24 +297,24 @@ def main():
             
             val = dam[address]
             res_token = (destination, val)
-            reb.append(res_token)
-
+            
             order[res_token] = order[adb[0]]
             del order[adb[0]]
             adb.pop(0)
+            reb.append(res_token)
+            reb.sort(key=lambda t: order[t])
             fired = True
 
         #transition 8; write 
-        if len(reb) > 0:
+        if reb_snapshot > 0:
             index = -1
             min_order = None
 
             for i in range(len(reb)):
                 token_order = order[reb[i]]
-
-            if (min_order is None) or (token_order < min_order):
-                min_order = token_order
-                index = i
+                if (min_order is None) or (token_order < min_order):
+                    min_order = token_order
+                    index = i
 
             destination = reb[index][0]
             val = reb[index][1]
